@@ -47,6 +47,7 @@
             const formatRupees = (num) => "₹" + num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
             return (
+                <>
                 <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                     <div class="bg-amber-500 p-6 text-white text-center">
                         <h1 class="text-2xl font-bold">Making Charge Calculator</h1>
@@ -132,6 +133,13 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    <a href="https://github.com/brittotprince/Gold-Making-Charges" target="_blank" rel="noopener noreferrer" class="hover:text-amber-600 transition-colors underline decoration-dotted">
+                        Get the source code here
+                    </a>
+                </div>
+                </>
             );
         }
 
