@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "title": "Always Check 6-digit HUID",
+    "tip": "Since April 2023, BIS hallmark with a unique 6-digit alphanumeric HUID is mandatory across India. Verify it with the BIS Care App before paying."
+  },
+  {
+    "id": 2,
+    "title": "Deduct Stone Weight",
+    "tip": "Never pay gold rates for stone or enamel weight. Always demand the 'Net Gold Weight' bill, separated from the gross ornament weight."
+  },
+  {
+    "id": 3,
+    "title": "Making Charges are Negotiable",
+    "tip": "Most branded and local jewelers have a 15–30% negotiation buffer on making charges, especially during festival seasons (Diwali, Akshaya Tritiya)."
+  },
+  {
+    "id": 4,
+    "title": "22K vs 24K Rate Check",
+    "tip": "Ornaments are usually 22K (91.6% pure). Ensure the jeweler is calculating based on the 22K rate, not the higher 24K bullion rate."
+  },
+  {
+    "id": 5,
+    "title": "Watch Out for 'Wastage' (Kadam)",
+    "tip": "Some jewelers charge both 'Wastage %' and 'Making Charges'. For modern machine-made jewelry, wastage should be minimal or rolled into making charges."
+  },
+  {
+    "id": 6,
+    "title": "Insist on Itemized GST Bill",
+    "tip": "A legitimate invoice must clearly separate: Net Gold Value, Making Charges, and 3% GST. This is critical for future resale or exchange value."
+  }
+]
