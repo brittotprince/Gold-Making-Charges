@@ -1,27 +1,48 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import tips from './data/tips.json'
+import { getAllQuotes, saveQuote, deleteQuote } from './services/db.js'
 
 export default function App() {
-  // Storing state as strings fixes the decimal point cursor bug
-  const [totalPrice, setTotalPrice] = useState("165000")
-  const [weight, setWeight] = useState("10")
+  // Input states (Reordered flow: Rate -> Weight -> GST -> Total Price)
   const [goldRate, setGoldRate] = useState("14270")
+  const [weight, setWeight] = useState("10")
   const [gst, setGst] = useState("3")
+  const [totalPrice, setTotalPrice] = useState("165000")
 
-  // Easter Egg 2: Tips reader from tips.json
-  const [tipIndex, setTipIndex] = useState(0)
-
-  // Easter Egg 3: Karat switcher
-  const [selectedKarat, setSelectedKarat] = useState("custom")
+  // Karat selection (Active 24K on page load)
+  const [selectedKarat, setSelectedKarat] = useState("24K")
   const base24kRef = useRef(14270)
 
-  // Animation state for coin flip (smooth 850ms flip)
+  // Buyer tips state & 3D coin flip
+  const [tipIndex, setTipIndex] = useState(0)
   const [isFlipping, setIsFlipping] = useState(false)
 
-  // Input handler that allows decimals without jumping the cursor
+  // IndexedDB Quotes State (Shopping Comparison)
+  const [savedQuotes, setSavedQuotes] = useState([])
+  const [itemName, setItemName] = useState("")
+  const [editingId, setEditingId] = useState(null)
+  const [isSavedFeedback, setIsSavedFeedback] = useState(false)
+
+  // Top ref for smooth scrolling on Edit
+  const calculatorRef = useRef(null)
+
+  // Load saved quotes from IndexedDB on component mount
+  useEffect(() => {
+    loadQuotes()
+  }, [])
+
+  const loadQuotes = async () => {
+    try {
+      const quotes = await getAllQuotes()
+      setSavedQuotes(quotes)
+    } catch (err) {
+      console.error('Error loading quotes from IndexedDB:', err)
+    }
+  }
+
+  // Input handler allowing decimals without jumping the cursor
   const handleInput = (setter) => (e) => {
     const value = e.target.value
-    // Regex allows empty string, or numbers with up to one decimal point
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setter(value)
       if (setter === setGoldRate) {
@@ -30,15 +51,7 @@ export default function App() {
     }
   }
 
-  // Handle coin click (flips coin with slower, weighted animation + advances tip)
-  const handleCoinClick = () => {
-    if (isFlipping) return
-    setIsFlipping(true)
-    setTimeout(() => setIsFlipping(false), 850)
-    setTipIndex((prev) => (prev + 1) % tips.length)
-  }
-
-  // Handle Karat switcher
+  // Handle Karat toggle
   const handleKaratSelect = (karat) => {
     setSelectedKarat(karat)
     const currentRate = parseFloat(goldRate) || base24kRef.current
@@ -55,7 +68,15 @@ export default function App() {
     }
   }
 
-  // Run calculations safely
+  // Coin flip (slower 850ms weighted animation + advances tip)
+  const handleCoinClick = () => {
+    if (isFlipping) return
+    setIsFlipping(true)
+    setTimeout(() => setIsFlipping(false), 850)
+    setTipIndex((prev) => (prev + 1) % tips.length)
+  }
+
+  // Financial calculations
   const p = parseFloat(totalPrice) || 0
   const w = parseFloat(weight) || 0
   const r = parseFloat(goldRate) || 0
@@ -70,12 +91,90 @@ export default function App() {
   const formatRupees = (num) =>
     "₹" + num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
-  const currentTip = tips[tipIndex]
+  // Save / Update Quote in IndexedDB
+  const handleSaveQuote = async (e) => {
+    e.preventDefault()
+    const nameToSave = itemName.trim() || `Quote #${savedQuotes.length + 1} (${selectedKarat})`
+
+    const quoteData = {
+      id: editingId || Date.now(),
+      name: nameToSave,
+      karat: selectedKarat,
+      goldRate,
+      weight,
+      gst,
+      totalPrice,
+      goldValue,
+      basePrice,
+      makingChargeAmt,
+      makingChargePct: parseFloat(makingChargePct.toFixed(2))
+    }
+
+    try {
+      await saveQuote(quoteData)
+      await loadQuotes()
+      setItemName("")
+      setEditingId(null)
+      setIsSavedFeedback(true)
+      setTimeout(() => setIsSavedFeedback(false), 2000)
+    } catch (err) {
+      console.error('Failed to save quote:', err)
+    }
+  }
+
+  // Edit Quote: Populates calculator
+  const handleEditQuote = (quote) => {
+    setGoldRate(quote.goldRate)
+    setWeight(quote.weight)
+    setGst(quote.gst)
+    setTotalPrice(quote.totalPrice)
+    setSelectedKarat(quote.karat || "custom")
+    setItemName(quote.name)
+    setEditingId(quote.id)
+
+    // Smooth scroll back to calculator
+    if (calculatorRef.current) {
+      calculatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // Cancel Edit mode
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setItemName("")
+  }
+
+  // Delete single quote from IndexedDB
+  const handleDeleteQuote = async (id) => {
+    try {
+      await deleteQuote(id)
+      await loadQuotes()
+      if (editingId === id) {
+        setEditingId(null)
+        setItemName("")
+      }
+    } catch (err) {
+      console.error('Failed to delete quote:', err)
+    }
+  }
+
+  // Find lowest making charge % for "Best Value" indicator (only if >= 2 quotes)
+  const validQuotes = savedQuotes.filter((q) => q.goldValue > 0)
+  const lowestChargePct =
+    validQuotes.length >= 2
+      ? Math.min(...validQuotes.map((q) => q.makingChargePct))
+      : null
+
+  const currentTip = tips[tipIndex] || tips[0]
 
   return (
-    <div className="w-full max-w-xl my-4">
+    <div className="w-full max-w-xl my-4 space-y-6">
+      
       {/* Main Glass/Obsidian Card */}
-      <div className="bg-[#12141a] rounded-2xl shadow-2xl overflow-hidden border border-neutral-800/90 backdrop-blur-md">
+      <div 
+        ref={calculatorRef}
+        className="bg-[#12141a] rounded-2xl shadow-2xl overflow-hidden border border-neutral-800/90 backdrop-blur-md"
+      >
         
         {/* Header with Title and Interactive Coin Easter Egg */}
         <div className="bg-gradient-to-b from-[#1b1e28] to-[#12141a] p-6 border-b border-neutral-800/80 text-center relative">
@@ -92,7 +191,6 @@ export default function App() {
               aria-label="Flip gold coin for buyer tips"
             >
               <span className="text-2xl select-none">🪙</span>
-              {/* Subtle pulsing ring hint */}
               <span className="absolute -inset-1 rounded-full border border-amber-400/30 group-hover:border-amber-400/60 pointer-events-none" />
             </button>
           </div>
@@ -113,57 +211,25 @@ export default function App() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Inputs Section */}
+          {/* Inputs Section (Reordered: Rate -> Weight -> GST -> Total Final Price) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* 1. Total Price */}
-            <div>
-              <label htmlFor="total-price" className="block text-sm font-semibold text-neutral-300 mb-1.5">
-                Total Final Price (₹)
-              </label>
-              <input
-                id="total-price"
-                type="text"
-                inputMode="decimal"
-                value={totalPrice}
-                onChange={handleInput(setTotalPrice)}
-                className="w-full p-3 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
-                placeholder="e.g. 165000"
-              />
-            </div>
-
-            {/* 2. Weight */}
-            <div>
-              <label htmlFor="weight" className="block text-sm font-semibold text-neutral-300 mb-1.5">
-                Weight of Ornament (g)
-              </label>
-              <input
-                id="weight"
-                type="text"
-                inputMode="decimal"
-                value={weight}
-                onChange={handleInput(setWeight)}
-                className="w-full p-3 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
-                placeholder="e.g. 10.5"
-              />
-            </div>
-
-            {/* 3. Gold Rate with Karat Presets */}
+            {/* 1. Gold Rate with Active Karat Selector & Watermark */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="gold-rate" className="block text-sm font-semibold text-neutral-300">
-                  Local Gold Rate/g (₹)
+                  Local Gold Rate/g
                 </label>
-                {/* Karat Switcher Buttons */}
-                <div className="flex gap-1 text-[11px]">
+                {/* Karat Switcher Buttons (24K active by default) */}
+                <div className="flex gap-1">
                   {["24K", "22K", "18K"].map((k) => (
                     <button
                       key={k}
                       type="button"
                       onClick={() => handleKaratSelect(k)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
                         selectedKarat === k
-                          ? 'bg-amber-500 text-neutral-950 font-bold shadow-sm'
+                          ? 'bg-amber-500 text-neutral-950 shadow-sm shadow-amber-500/30 scale-105'
                           : 'bg-neutral-800/80 text-neutral-400 hover:text-amber-300 hover:bg-neutral-800'
                       }`}
                     >
@@ -172,36 +238,88 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <input
-                id="gold-rate"
-                type="text"
-                inputMode="decimal"
-                value={goldRate}
-                onChange={handleInput(setGoldRate)}
-                className="w-full p-3 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
-                placeholder="e.g. 14270"
-              />
+              <div className="relative flex items-center">
+                <input
+                  id="gold-rate"
+                  type="text"
+                  inputMode="decimal"
+                  value={goldRate}
+                  onChange={handleInput(setGoldRate)}
+                  className="w-full p-3 pr-14 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
+                  placeholder="e.g. 14270"
+                />
+                <span className="absolute right-3 text-xs font-mono text-neutral-500 pointer-events-none select-none">
+                  ₹ / g
+                </span>
+              </div>
             </div>
 
-            {/* 4. GST */}
+            {/* 2. Weight of Ornament */}
+            <div>
+              <label htmlFor="weight" className="block text-sm font-semibold text-neutral-300 mb-1.5">
+                Weight of Ornament
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  id="weight"
+                  type="text"
+                  inputMode="decimal"
+                  value={weight}
+                  onChange={handleInput(setWeight)}
+                  className="w-full p-3 pr-14 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
+                  placeholder="e.g. 10.5"
+                />
+                <span className="absolute right-3 text-xs font-mono text-neutral-500 pointer-events-none select-none">
+                  grams
+                </span>
+              </div>
+            </div>
+
+            {/* 3. GST (%) */}
             <div>
               <label htmlFor="gst" className="block text-sm font-semibold text-neutral-300 mb-1.5">
-                GST (%)
+                GST Rate
               </label>
-              <input
-                id="gst"
-                type="text"
-                inputMode="decimal"
-                value={gst}
-                onChange={handleInput(setGst)}
-                className="w-full p-3 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
-                placeholder="e.g. 3"
-              />
+              <div className="relative flex items-center">
+                <input
+                  id="gst"
+                  type="text"
+                  inputMode="decimal"
+                  value={gst}
+                  onChange={handleInput(setGst)}
+                  className="w-full p-3 pr-12 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
+                  placeholder="e.g. 3"
+                />
+                <span className="absolute right-3 text-xs font-mono text-neutral-500 pointer-events-none select-none">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* 4. Total Final Price Quoted (at bottom of inputs) */}
+            <div>
+              <label htmlFor="total-price" className="block text-sm font-semibold text-neutral-300 mb-1.5">
+                Total Final Price Quoted
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  id="total-price"
+                  type="text"
+                  inputMode="decimal"
+                  value={totalPrice}
+                  onChange={handleInput(setTotalPrice)}
+                  className="w-full p-3 pr-14 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono font-medium"
+                  placeholder="e.g. 165000"
+                />
+                <span className="absolute right-3 text-xs font-mono text-neutral-500 pointer-events-none select-none">
+                  ₹ Total
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Results Breakdown Section */}
-          <div className="mt-6 bg-[#0a0b0f] rounded-xl p-5 border border-neutral-800/90 shadow-inner">
+          <div className="bg-[#0a0b0f] rounded-xl p-5 border border-neutral-800/90 shadow-inner">
             <h2 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4 flex items-center justify-between">
               <span>Financial Breakdown</span>
               <span className="text-[11px] font-normal text-neutral-500">Reverse-Calculated</span>
@@ -234,7 +352,53 @@ export default function App() {
             </div>
           </div>
 
-          {/* Jeweler's Insider Tip Card (Easter Egg 2) */}
+          {/* Save to IndexedDB Action Bar */}
+          <form onSubmit={handleSaveQuote} className="bg-[#0e1017] p-4 rounded-xl border border-neutral-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
+                <span>🛍️ Save to Shopping Comparisons</span>
+                {editingId && (
+                  <span className="bg-amber-500/20 text-amber-400 text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">
+                    Editing Mode
+                  </span>
+                )}
+              </span>
+              {isSavedFeedback && (
+                <span className="text-xs text-emerald-400 font-medium animate-pulse">
+                  ✓ Saved to Browser DB!
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                placeholder="Item / Store Name (e.g. Kalyan 10g Bangle)"
+                className="flex-1 p-2.5 bg-[#08090d] border border-neutral-800 rounded-lg text-sm text-white placeholder-neutral-600 focus:border-amber-500 outline-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-neutral-950 font-bold text-xs rounded-lg hover:from-amber-400 hover:to-yellow-400 active:scale-95 transition-all shadow-md shadow-amber-500/20 cursor-pointer whitespace-nowrap"
+                >
+                  {editingId ? '💾 Update Quote' : '💾 Save Quote'}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="px-3 py-2.5 bg-neutral-800 text-neutral-300 hover:text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+
+          {/* Jeweler's Buyer Tip Card */}
           <div className="bg-amber-950/20 border border-amber-900/40 rounded-xl p-4 transition-all">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -259,8 +423,107 @@ export default function App() {
         </div>
       </div>
 
+      {/* Shopping Comparisons Milestone Grid (Stopwatch Laps Style) */}
+      {savedQuotes.length > 0 && (
+        <div className="bg-[#12141a] rounded-2xl shadow-xl overflow-hidden border border-neutral-800/90 p-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <span>📊 Shopping Comparisons</span>
+                <span className="text-xs font-mono bg-neutral-800 text-amber-400 px-2 py-0.5 rounded-full">
+                  {savedQuotes.length} saved
+                </span>
+              </h2>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Stored in browser IndexedDB — compare quotes side-by-side
+              </p>
+            </div>
+          </div>
+
+          {/* Milestones Cards List */}
+          <div className="space-y-3">
+            {savedQuotes.map((quote) => {
+              const isBest = lowestChargePct !== null && quote.makingChargePct === lowestChargePct
+              const isCurrentlyEditing = editingId === quote.id
+
+              return (
+                <div
+                  key={quote.id}
+                  className={`p-4 rounded-xl border transition-all ${
+                    isCurrentlyEditing
+                      ? 'bg-amber-500/10 border-amber-500/50 shadow-md shadow-amber-500/10'
+                      : 'bg-[#0a0b0f] border-neutral-800/80 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-white">
+                        {quote.name}
+                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-neutral-800 text-amber-300 rounded font-mono">
+                        {quote.karat}
+                      </span>
+                      {isBest && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800/60 rounded-full flex items-center gap-1">
+                          <span>✨ Best Value</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-mono text-neutral-500">
+                      {quote.createdAt}
+                    </span>
+                  </div>
+
+                  {/* Metrics Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs py-2 border-y border-neutral-900 font-mono">
+                    <div>
+                      <span className="text-neutral-500 block text-[10px] uppercase font-sans">Rate</span>
+                      <span className="text-neutral-200">₹{parseFloat(quote.goldRate).toLocaleString('en-IN')}/g</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px] uppercase font-sans">Weight</span>
+                      <span className="text-neutral-200">{quote.weight}g</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px] uppercase font-sans">Total Quoted</span>
+                      <span className="text-white font-semibold">₹{parseFloat(quote.totalPrice).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px] uppercase font-sans">Making Charge</span>
+                      <span className="text-amber-400 font-bold">
+                        ₹{Math.round(quote.makingChargeAmt).toLocaleString('en-IN')} ({quote.makingChargePct}%)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div className="flex items-center justify-end gap-3 pt-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleEditQuote(quote)}
+                      className="text-neutral-400 hover:text-amber-300 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                      title="Load into calculator to edit"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteQuote(quote.id)}
+                      className="text-neutral-500 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Remove from saved quotes"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="mt-6 text-center text-xs text-neutral-500">
+      <footer className="text-center text-xs text-neutral-500 pt-2 pb-6">
         <a
           href="https://github.com/brittotprince/Gold-Making-Charges"
           target="_blank"
