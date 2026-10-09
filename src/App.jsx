@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import tips from './data/tips.json'
 import { getAllQuotes, saveQuote, deleteQuote } from './services/db.js'
+import { calculateMakingCharges, formatRupees } from './utils/calculator.js'
 
 export default function App() {
   // Local Gold Rate: initialized from localStorage if previously entered, else blank
@@ -86,20 +87,18 @@ export default function App() {
     setTipIndex((prev) => (prev + 1) % tips.length)
   }
 
-  // Financial calculations
-  const p = parseFloat(totalPrice) || 0
-  const w = parseFloat(weight) || 0
-  const r = parseFloat(goldRate) || 0
-  const g = parseFloat(gst) || 0
-
-  const goldValue = w * r
-  const basePrice = g > -100 ? p / (1 + (g / 100)) : 0
-  const makingChargeAmt = basePrice - goldValue
-  const makingChargePct = goldValue > 0 ? (makingChargeAmt / goldValue) * 100 : 0
-
-  // Helper for Indian currency formatting
-  const formatRupees = (num) =>
-    "₹" + num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  // Pure financial calculations with edge-case protection
+  const {
+    rawGoldValue,
+    basePrice,
+    makingChargeAmt,
+    makingChargePct,
+    isImpossibleBill,
+    pureGoldValueFormatted,
+    basePriceFormatted,
+    makingChargeAmtFormatted,
+    makingChargePctFormatted
+  } = calculateMakingCharges({ totalPrice, weight, goldRate, gst })
 
   // Save / Update Quote in IndexedDB
   const handleSaveQuote = async (e) => {
@@ -114,7 +113,7 @@ export default function App() {
       weight,
       gst,
       totalPrice,
-      goldValue,
+      goldValue: rawGoldValue,
       basePrice,
       makingChargeAmt,
       makingChargePct: parseFloat(makingChargePct.toFixed(2))
@@ -358,34 +357,44 @@ export default function App() {
           </div>
 
           {/* Results Breakdown Section */}
-          <div className="bg-[#0a0b0f] rounded-xl p-5 border border-neutral-800/90 shadow-inner">
-            <h2 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+          <div className="bg-[#0a0b0f] rounded-xl p-5 border border-neutral-800/90 shadow-inner space-y-3">
+            <h2 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Financial Breakdown</span>
               <span className="text-[11px] font-normal text-neutral-500">Reverse-Calculated</span>
             </h2>
 
+            {/* Edge Case 1: Impossible Bill Warning */}
+            {isImpossibleBill && (
+              <div className="bg-rose-950/40 border border-rose-800/60 rounded-lg p-3 text-xs text-rose-300 flex items-start gap-2">
+                <span className="text-sm select-none">⚠️</span>
+                <div>
+                  <strong>Impossible Bill Alert:</strong> Quoted price is less than raw bullion gold value. In reality, jewelers do not sell below raw metal cost. Please verify weight or rate inputs.
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="flex justify-between items-center text-neutral-300 text-sm">
                 <span>Pure Gold Value</span>
-                <span className="font-semibold text-white font-mono">{formatRupees(goldValue)}</span>
+                <span className="font-semibold text-white font-mono">{pureGoldValueFormatted}</span>
               </div>
               <div className="flex justify-between items-center text-neutral-300 text-sm">
                 <span>Price Before GST</span>
-                <span className="font-semibold text-white font-mono">{formatRupees(basePrice)}</span>
+                <span className="font-semibold text-white font-mono">{basePriceFormatted}</span>
               </div>
 
               <hr className="border-neutral-800 my-2.5" />
 
               <div className="flex justify-between items-center">
                 <span className="text-base font-semibold text-neutral-200">Making Charge (Amount)</span>
-                <span className="text-lg font-bold text-amber-400 font-mono">
-                  {formatRupees(makingChargeAmt)}
+                <span className={`text-lg font-bold font-mono ${makingChargeAmt < 0 ? 'text-rose-400' : 'text-amber-400'}`}>
+                  {makingChargeAmtFormatted}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-base font-semibold text-neutral-200">Making Charge (%)</span>
-                <span className="text-lg font-bold text-amber-400 font-mono">
-                  {makingChargePct.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%
+                <span className={`text-lg font-bold font-mono ${makingChargeAmt < 0 ? 'text-rose-400' : 'text-amber-400'}`}>
+                  {makingChargePctFormatted}
                 </span>
               </div>
             </div>
