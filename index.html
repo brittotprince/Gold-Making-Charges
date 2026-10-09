@@ -4,505 +4,147 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gold Making Charge Calculator</title>
-    <meta name="description" content="Calculate raw gold value, tax-free base price, and exact making charge amount and percentage from your jewelry bill.">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #0b0c0f;
-            --surface-color: #12141a;
-            --input-bg: #15181f;
-            --input-border: #232733;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --text-sub: #6b7280;
-            --divider: #20242e;
-            --blue-highlight: #194fd6;
-            --blue-highlight-hover: #1e56e8;
-            --accent-glow: rgba(25, 79, 214, 0.25);
-            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-family);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 32px 16px 48px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 720px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h1.title {
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            color: #ffffff;
-            margin-bottom: 24px;
-        }
-
-        /* --- Financial Metrics Table --- */
-        .metrics-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 28px;
-        }
-
-        .metrics-table thead tr {
-            border-bottom: 1px solid var(--divider);
-        }
-
-        .metrics-table th {
-            padding: 12px 14px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-align: left;
-        }
-
-        .metrics-table th.col-value {
-            text-align: right;
-        }
-
-        .metrics-table tbody tr {
-            transition: background-color 0.15s ease;
-        }
-
-        .metrics-table td {
-            padding: 12px 14px;
-            font-size: 14px;
-            color: var(--text-main);
-        }
-
-        .metrics-table td.col-value {
-            text-align: right;
-            font-weight: 500;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* Highlight Rows for Making Charges */
-        .metrics-table tr.highlight-blue {
-            background-color: var(--blue-highlight);
-        }
-
-        .metrics-table tr.highlight-blue td {
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        .metrics-table tr.highlight-blue.first-highlight td:first-child {
-            border-top-left-radius: 4px;
-        }
-
-        .metrics-table tr.highlight-blue.first-highlight td:last-child {
-            border-top-right-radius: 4px;
-        }
-
-        .metrics-table tr.highlight-blue.last-highlight td:first-child {
-            border-bottom-left-radius: 4px;
-        }
-
-        .metrics-table tr.highlight-blue.last-highlight td:last-child {
-            border-bottom-right-radius: 4px;
-        }
-
-        /* --- KPI Summary Strip --- */
-        .kpi-strip {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 0;
-            margin-bottom: 32px;
-            border-top: 1px solid transparent;
-        }
-
-        .kpi-item {
-            flex: 1;
-            text-align: center;
-            padding: 0 10px;
-            position: relative;
-        }
-
-        .kpi-item:not(:last-child)::after {
-            content: "";
-            position: absolute;
-            right: 0;
-            top: 10%;
-            height: 80%;
-            width: 1px;
-            background-color: var(--divider);
-        }
-
-        .kpi-label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-
-        .kpi-value {
-            display: block;
-            font-size: 18px;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: -0.01em;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* --- Inputs Form Section --- */
-        .input-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 200px 1fr;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .form-row label {
-            font-size: 15px;
-            font-weight: 500;
-            color: #ffffff;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .input-pill {
-            width: 100%;
-            background-color: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 24px;
-            padding: 12px 20px;
-            color: #ffffff;
-            font-family: inherit;
-            font-size: 15px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-        }
-
-        .input-pill:hover {
-            border-color: #333947;
-            background-color: #191c25;
-        }
-
-        .input-pill:focus {
-            border-color: var(--blue-highlight);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-            background-color: #191c25;
-        }
-
-        /* Footer */
-        .footer {
-            margin-top: 48px;
-            padding-top: 20px;
-            border-top: 1px solid var(--divider);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            color: var(--text-sub);
-        }
-
-        .footer a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-
-        .footer a:hover {
-            color: #ffffff;
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 600px) {
-            body {
-                padding: 20px 14px 36px;
-            }
-
-            h1.title {
-                font-size: 22px;
-                margin-bottom: 18px;
-            }
-
-            .metrics-table th,
-            .metrics-table td {
-                padding: 10px 8px;
-                font-size: 13px;
-            }
-
-            .kpi-strip {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                padding: 16px;
-                background-color: var(--surface-color);
-                border-radius: 12px;
-                border: 1px solid var(--divider);
-            }
-
-            .kpi-item {
-                text-align: left;
-                padding: 0;
-            }
-
-            .kpi-item:not(:last-child)::after {
-                display: none;
-            }
-
-            .kpi-value {
-                font-size: 16px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 6px;
-                margin-bottom: 4px;
-            }
-        }
-    </style>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body>
-    <main class="container">
-        <h1 class="title">Gold Making Charge Calculator</h1>
+<body class="bg-gray-50 text-gray-900 font-sans p-4 md:p-8 flex justify-center">
+    <div id="root" class="w-full max-w-xl"></div>
 
-        <!-- Table Breakdown -->
-        <table class="metrics-table" id="metricsTable">
-            <thead>
-                <tr>
-                    <th scope="col">Financial Metric</th>
-                    <th scope="col" class="col-value">Amount/Value</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Input: Total Paid (Inc. Tax)</td>
-                    <td class="col-value" id="rowTotalPaid">165,000</td>
-                </tr>
-                <tr>
-                    <td>Input: Pure Gold Rate</td>
-                    <td class="col-value" id="rowGoldRate">14,270</td>
-                </tr>
-                <tr>
-                    <td>Input: Weight</td>
-                    <td class="col-value" id="rowWeight">10g</td>
-                </tr>
-                <tr>
-                    <td>1. Raw Gold Value</td>
-                    <td class="col-value" id="rowRawGold">142,700</td>
-                </tr>
-                <tr>
-                    <td>2. Base Price (Excl. GST)</td>
-                    <td class="col-value" id="rowBasePrice">160,194.17</td>
-                </tr>
-                <tr class="highlight-blue first-highlight">
-                    <td>3. Total Making Charge</td>
-                    <td class="col-value" id="rowMakingCharge">17,494.17</td>
-                </tr>
-                <tr class="highlight-blue last-highlight">
-                    <td>4. Making Charge (%)</td>
-                    <td class="col-value" id="rowMakingChargePct">12.26%</td>
-                </tr>
-            </tbody>
-        </table>
+    <script type="text/babel">
+        function CalculatorApp() {
+            // Storing state as strings fixes the decimal point cursor bug
+            const [totalPrice, setTotalPrice] = React.useState("165000");
+            const [weight, setWeight] = React.useState("10");
+            const [goldRate, setGoldRate] = React.useState("14270");
+            const [gst, setGst] = React.useState("3");
 
-        <!-- Summary Strip -->
-        <section class="kpi-strip" aria-label="Key Financial Indicators">
-            <div class="kpi-item">
-                <span class="kpi-label">Gold Value</span>
-                <span class="kpi-value" id="kpiGoldValue">142,700</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Base Tax-Free Price</span>
-                <span class="kpi-value" id="kpiBasePrice">160,194.17</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Making Charge Amt</span>
-                <span class="kpi-value" id="kpiMakingCharge">17,494.17</span>
-            </div>
-            <div class="kpi-item">
-                <span class="kpi-label">Making Charge %</span>
-                <span class="kpi-value" id="kpiMakingChargePct">12.26%</span>
-            </div>
-        </section>
-
-        <!-- Inputs Section -->
-        <section class="input-form">
-            <div class="form-row">
-                <label for="inputTotalPaid">Total Price Paid</label>
-                <input 
-                    type="text" 
-                    id="inputTotalPaid" 
-                    class="input-pill" 
-                    inputmode="decimal" 
-                    value="165000" 
-                    autocomplete="off"
-                    placeholder="e.g. 165000"
-                />
-            </div>
-
-            <div class="form-row">
-                <label for="inputWeight">Weight (grams)</label>
-                <input 
-                    type="text" 
-                    id="inputWeight" 
-                    class="input-pill" 
-                    inputmode="decimal" 
-                    value="10" 
-                    autocomplete="off"
-                    placeholder="e.g. 10"
-                />
-            </div>
-
-            <div class="form-row">
-                <label for="inputGoldRate">Gold Rate per Gram</label>
-                <input 
-                    type="text" 
-                    id="inputGoldRate" 
-                    class="input-pill" 
-                    inputmode="decimal" 
-                    value="14270" 
-                    autocomplete="off"
-                    placeholder="e.g. 14270"
-                />
-            </div>
-
-            <div class="form-row">
-                <label for="inputGst">GST %</label>
-                <input 
-                    type="text" 
-                    id="inputGst" 
-                    class="input-pill" 
-                    inputmode="decimal" 
-                    value="3" 
-                    autocomplete="off"
-                    placeholder="e.g. 3"
-                />
-            </div>
-        </section>
-
-        <footer class="footer">
-            <span>Real-time Indian Jewelry Bill Math</span>
-            <a href="https://github.com/brittotprince/Gold-Making-Charges" target="_blank" rel="noopener noreferrer">
-                Source Code on GitHub &rarr;
-            </a>
-        </footer>
-    </main>
-
-    <script>
-        // DOM Elements
-        const inputTotalPaid = document.getElementById('inputTotalPaid');
-        const inputWeight = document.getElementById('inputWeight');
-        const inputGoldRate = document.getElementById('inputGoldRate');
-        const inputGst = document.getElementById('inputGst');
-
-        // Table elements
-        const rowTotalPaid = document.getElementById('rowTotalPaid');
-        const rowGoldRate = document.getElementById('rowGoldRate');
-        const rowWeight = document.getElementById('rowWeight');
-        const rowRawGold = document.getElementById('rowRawGold');
-        const rowBasePrice = document.getElementById('rowBasePrice');
-        const rowMakingCharge = document.getElementById('rowMakingCharge');
-        const rowMakingChargePct = document.getElementById('rowMakingChargePct');
-
-        // KPI elements
-        const kpiGoldValue = document.getElementById('kpiGoldValue');
-        const kpiBasePrice = document.getElementById('kpiBasePrice');
-        const kpiMakingCharge = document.getElementById('kpiMakingCharge');
-        const kpiMakingChargePct = document.getElementById('kpiMakingChargePct');
-
-        // Helper to format numbers with commas & optional decimals
-        function formatNumber(num, minDecimals = 0, maxDecimals = 2) {
-            if (isNaN(num) || !isFinite(num)) return '0';
-            return num.toLocaleString('en-US', {
-                minimumFractionDigits: minDecimals,
-                maximumFractionDigits: maxDecimals
-            });
-        }
-
-        // Sanitizing input to allow only valid decimals without cursor jumps
-        function setupNumberInput(inputEl, onValidChange) {
-            let lastValid = inputEl.value;
-            inputEl.addEventListener('input', (e) => {
-                const val = inputEl.value.trim();
-                // Allow empty or valid decimal pattern
-                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                    lastValid = val;
-                    onValidChange();
-                } else {
-                    inputEl.value = lastValid;
+            // Input handler that allows decimals without jumping the cursor
+            const handleInput = (setter) => (e) => {
+                const value = e.target.value;
+                // Regex allows empty string, or numbers with up to one decimal point
+                if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                    setter(value);
                 }
-            });
+            };
+
+            // Run calculations safely
+            const p = parseFloat(totalPrice) || 0;
+            const w = parseFloat(weight) || 0;
+            const r = parseFloat(goldRate) || 0;
+            const g = parseFloat(gst) || 0;
+
+            const goldValue = w * r;
+            const basePrice = p / (1 + (g / 100));
+            const makingChargeAmt = basePrice - goldValue;
+            const makingChargePct = goldValue > 0 ? (makingChargeAmt / goldValue) * 100 : 0;
+
+            // Helper for Indian currency formatting
+            const formatRupees = (num) => "₹" + num.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+            return (
+                <>
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                    <div class="bg-amber-500 p-6 text-white text-center">
+                        <h1 class="text-2xl font-bold">Making Charge Calculator</h1>
+                        <p class="text-amber-100 text-sm mt-1">Find out what you're really paying</p>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        {/* Inputs Section */}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Total Final Price (₹)</label>
+                                <input 
+                                    type="text" 
+                                    inputMode="decimal"
+                                    value={totalPrice} 
+                                    onChange={handleInput(setTotalPrice)}
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                                    placeholder="e.g. 165000"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Weight of Ornament (g)</label>
+                                <input 
+                                    type="text" 
+                                    inputMode="decimal"
+                                    value={weight} 
+                                    onChange={handleInput(setWeight)}
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                                    placeholder="e.g. 10.5"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Local Gold Rate/g (₹)</label>
+                                <input 
+                                    type="text" 
+                                    inputMode="decimal"
+                                    value={goldRate} 
+                                    onChange={handleInput(setGoldRate)}
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                                    placeholder="e.g. 14270"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">GST (%)</label>
+                                <input 
+                                    type="text" 
+                                    inputMode="decimal"
+                                    value={gst} 
+                                    onChange={handleInput(setGst)}
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                                    placeholder="e.g. 3"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Results Section */}
+                        <div class="mt-8 bg-gray-50 rounded-xl p-5 border border-gray-200">
+                            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Breakdown</h2>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center text-gray-600">
+                                    <span>Pure Gold Value</span>
+                                    <span class="font-medium">{formatRupees(goldValue)}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-gray-600">
+                                    <span>Price Before GST</span>
+                                    <span class="font-medium">{formatRupees(basePrice)}</span>
+                                </div>
+                                
+                                <hr class="border-gray-200 my-2" />
+                                
+                                <div class="flex justify-between items-center">
+                                    <span class="text-lg font-semibold text-gray-800">Making Charge (Amount)</span>
+                                    <span class="text-lg font-bold text-red-600">{formatRupees(makingChargeAmt)}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-lg font-semibold text-gray-800">Making Charge (%)</span>
+                                    <span class="text-lg font-bold text-red-600">
+                                        {makingChargePct.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    <a href="https://github.com/brittotprince/Gold-Making-Charges" target="_blank" rel="noopener noreferrer" class="hover:text-amber-600 transition-colors underline decoration-dotted">
+                        Get the source code here
+                    </a>
+                </div>
+                </>
+            );
         }
 
-        function calculate() {
-            const p = parseFloat(inputTotalPaid.value) || 0;
-            const w = parseFloat(inputWeight.value) || 0;
-            const r = parseFloat(inputGoldRate.value) || 0;
-            const g = parseFloat(inputGst.value) || 0;
-
-            const rawGoldValue = w * r;
-            const basePrice = g > -100 ? p / (1 + (g / 100)) : 0;
-            const makingCharge = basePrice - rawGoldValue;
-            const makingChargePct = rawGoldValue > 0 ? (makingCharge / rawGoldValue) * 100 : 0;
-
-            // Formatted strings
-            const totalPaidStr = formatNumber(p, 0, 2);
-            const goldRateStr = formatNumber(r, 0, 2);
-            const weightStr = (inputWeight.value ? inputWeight.value : '0') + 'g';
-            const rawGoldStr = formatNumber(rawGoldValue, rawGoldValue % 1 === 0 ? 0 : 2, 2);
-            const basePriceStr = formatNumber(basePrice, 2, 2);
-            const makingChargeStr = formatNumber(makingCharge, 2, 2);
-            const makingChargePctStr = formatNumber(makingChargePct, 2, 2) + '%';
-
-            // Update Table
-            rowTotalPaid.textContent = totalPaidStr;
-            rowGoldRate.textContent = goldRateStr;
-            rowWeight.textContent = weightStr;
-            rowRawGold.textContent = rawGoldStr;
-            rowBasePrice.textContent = basePriceStr;
-            rowMakingCharge.textContent = makingChargeStr;
-            rowMakingChargePct.textContent = makingChargePctStr;
-
-            // Update KPI Strip
-            kpiGoldValue.textContent = rawGoldStr;
-            kpiBasePrice.textContent = basePriceStr;
-            kpiMakingCharge.textContent = makingChargeStr;
-            kpiMakingChargePct.textContent = makingChargePctStr;
-        }
-
-        // Bind events
-        [inputTotalPaid, inputWeight, inputGoldRate, inputGst].forEach(el => {
-            setupNumberInput(el, calculate);
-        });
-
-        // Initial run
-        calculate();
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<CalculatorApp />);
     </script>
 </body>
 </html>
