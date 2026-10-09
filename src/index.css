@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
 @keyframes coinFlip {
-  0% { transform: rotateY(0deg) scale(1); }
-  50% { transform: rotateY(180deg) scale(1.18); }
-  100% { transform: rotateY(360deg) scale(1); }
+  0% {
+    transform: perspective(600px) rotateY(0deg) rotateX(0deg) scale(1);
+  }
+  35% {
+    transform: perspective(600px) rotateY(130deg) rotateX(8deg) scale(1.12);
+  }
+  70% {
+    transform: perspective(600px) rotateY(260deg) rotateX(-6deg) scale(1.06);
+  }
+  100% {
+    transform: perspective(600px) rotateY(360deg) rotateX(0deg) scale(1);
+  }
 }
 
 .coin-flip-anim {
-  animation: coinFlip 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: coinFlip 0.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }

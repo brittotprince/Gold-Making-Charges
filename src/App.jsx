@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import tips from './data/tips.json'
-import { playCoinClink } from './utils/audio.js'
 
 export default function App() {
   // Storing state as strings fixes the decimal point cursor bug
@@ -16,7 +15,7 @@ export default function App() {
   const [selectedKarat, setSelectedKarat] = useState("custom")
   const base24kRef = useRef(14270)
 
-  // Animation state for coin flip
+  // Animation state for coin flip (smooth 850ms flip)
   const [isFlipping, setIsFlipping] = useState(false)
 
   // Input handler that allows decimals without jumping the cursor
@@ -31,17 +30,16 @@ export default function App() {
     }
   }
 
-  // Handle coin click (plays audio clink + flips coin + advances tip)
+  // Handle coin click (flips coin with slower, weighted animation + advances tip)
   const handleCoinClick = () => {
-    playCoinClink()
+    if (isFlipping) return
     setIsFlipping(true)
-    setTimeout(() => setIsFlipping(false), 450)
+    setTimeout(() => setIsFlipping(false), 850)
     setTipIndex((prev) => (prev + 1) % tips.length)
   }
 
   // Handle Karat switcher
   const handleKaratSelect = (karat) => {
-    playCoinClink()
     setSelectedKarat(karat)
     const currentRate = parseFloat(goldRate) || base24kRef.current
 
@@ -87,11 +85,11 @@ export default function App() {
             <button
               type="button"
               onClick={handleCoinClick}
-              title="Tap to test gold resonance & reveal buyer tip"
+              title="Tap to flip coin & reveal next buyer tip"
               className={`relative group inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 cursor-pointer transition-transform active:scale-95 ${
                 isFlipping ? 'coin-flip-anim' : 'hover:scale-105'
               }`}
-              aria-label="Gold coin acoustic ping test"
+              aria-label="Flip gold coin for buyer tips"
             >
               <span className="text-2xl select-none">🪙</span>
               {/* Subtle pulsing ring hint */}
@@ -109,7 +107,7 @@ export default function App() {
               onClick={handleCoinClick}
               className="text-amber-400/80 hover:text-amber-300 underline decoration-dotted transition-colors text-xs cursor-pointer"
             >
-              tap coin to test 🔔
+              tap coin for tips 💡
             </button>
           </p>
         </div>
