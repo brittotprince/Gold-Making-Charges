@@ -3,15 +3,17 @@ import tips from './data/tips.json'
 import { getAllQuotes, saveQuote, deleteQuote } from './services/db.js'
 
 export default function App() {
-  // Input states (Reordered flow: Rate -> Weight -> GST -> Total Price)
-  const [goldRate, setGoldRate] = useState("14270")
+  // Local Gold Rate: initialized from localStorage if previously entered, else blank
+  const [goldRate, setGoldRate] = useState(() => {
+    return localStorage.getItem('gold_calc_local_rate') || ""
+  })
   const [weight, setWeight] = useState("10")
   const [gst, setGst] = useState("3")
   const [totalPrice, setTotalPrice] = useState("165000")
 
-  // Karat selection (Active 24K on page load)
-  const [selectedKarat, setSelectedKarat] = useState("24K")
-  const base24kRef = useRef(14270)
+  // Karat selection: Default to 22K (standard for Indian jewelry)
+  const [selectedKarat, setSelectedKarat] = useState("22K")
+  const base22kRef = useRef(goldRate ? parseFloat(goldRate) : 13815)
 
   // Buyer tips state & 3D coin flip
   const [tipIndex, setTipIndex] = useState(0)
@@ -47,25 +49,33 @@ export default function App() {
       setter(value)
       if (setter === setGoldRate) {
         setSelectedKarat("custom")
+        if (value) {
+          localStorage.setItem('gold_calc_local_rate', value)
+          base22kRef.current = parseFloat(value) || base22kRef.current
+        } else {
+          localStorage.removeItem('gold_calc_local_rate')
+        }
       }
     }
   }
 
-  // Handle Karat toggle
+  // Handle Karat toggle (22K base)
   const handleKaratSelect = (karat) => {
     setSelectedKarat(karat)
-    const currentRate = parseFloat(goldRate) || base24kRef.current
+    const base = base22kRef.current || (parseFloat(goldRate) || 13815)
 
+    let newRate = base
     if (karat === "24K") {
-      const rate24k = base24kRef.current || currentRate
-      setGoldRate(Math.round(rate24k).toString())
+      newRate = Math.round(base * (24 / 22))
     } else if (karat === "22K") {
-      const rate22k = (base24kRef.current || currentRate) * (22 / 24)
-      setGoldRate(Math.round(rate22k).toString())
+      newRate = Math.round(base)
     } else if (karat === "18K") {
-      const rate18k = (base24kRef.current || currentRate) * (18 / 24)
-      setGoldRate(Math.round(rate18k).toString())
+      newRate = Math.round(base * (18 / 22))
     }
+
+    const rateStr = newRate.toString()
+    setGoldRate(rateStr)
+    localStorage.setItem('gold_calc_local_rate', rateStr)
   }
 
   // Coin flip (slower 850ms weighted animation + advances tip)
@@ -100,7 +110,7 @@ export default function App() {
       id: editingId || Date.now(),
       name: nameToSave,
       karat: selectedKarat,
-      goldRate,
+      goldRate: goldRate || "0",
       weight,
       gst,
       totalPrice,
@@ -131,6 +141,11 @@ export default function App() {
     setSelectedKarat(quote.karat || "custom")
     setItemName(quote.name)
     setEditingId(quote.id)
+
+    if (quote.goldRate) {
+      localStorage.setItem('gold_calc_local_rate', quote.goldRate)
+      base22kRef.current = parseFloat(quote.goldRate)
+    }
 
     // Smooth scroll back to calculator
     if (calculatorRef.current) {
@@ -176,29 +191,29 @@ export default function App() {
         className="bg-[#12141a] rounded-2xl shadow-2xl overflow-hidden border border-neutral-800/90 backdrop-blur-md"
       >
         
-        {/* Header with Title and Interactive Coin Easter Egg */}
+        {/* Header with Refined Title Typography & Coin */}
         <div className="bg-gradient-to-b from-[#1b1e28] to-[#12141a] p-6 border-b border-neutral-800/80 text-center relative">
           
           {/* Interactive Coin Button */}
-          <div className="flex justify-center mb-3">
+          <div className="flex justify-center mb-2.5">
             <button
               type="button"
               onClick={handleCoinClick}
               title="Tap to flip coin & reveal next buyer tip"
-              className={`relative group inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 cursor-pointer transition-transform active:scale-95 ${
+              className={`relative group inline-flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 cursor-pointer transition-transform active:scale-95 ${
                 isFlipping ? 'coin-flip-anim' : 'hover:scale-105'
               }`}
               aria-label="Flip gold coin for buyer tips"
             >
-              <span className="text-2xl select-none">🪙</span>
+              <span className="text-xl select-none">🪙</span>
               <span className="absolute -inset-1 rounded-full border border-amber-400/30 group-hover:border-amber-400/60 pointer-events-none" />
             </button>
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent tracking-tight">
+          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent tracking-tight">
             Gold Making Charge Calculator (India)
           </h1>
-          <p className="text-neutral-400 text-xs md:text-sm mt-1.5 flex items-center justify-center gap-1.5">
+          <p className="text-neutral-400 text-xs mt-1 flex items-center justify-center gap-1.5">
             <span>Find out what you're really paying</span>
             <span className="text-neutral-600">•</span>
             <button
@@ -211,18 +226,18 @@ export default function App() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Inputs Section (Reordered: Rate -> Weight -> GST -> Total Final Price) */}
+          {/* Inputs Section (Reordered Flow) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* 1. Gold Rate with Active Karat Selector & Watermark */}
+            {/* 1. Gold Rate with 22K Default Active, Check Rate Search & Watermark */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="gold-rate" className="block text-sm font-semibold text-neutral-300">
                   Local Gold Rate/g
                 </label>
-                {/* Karat Switcher Buttons (24K active by default) */}
+                {/* Karat Switcher Buttons (22K active by default) */}
                 <div className="flex gap-1">
-                  {["24K", "22K", "18K"].map((k) => (
+                  {["22K", "24K", "18K"].map((k) => (
                     <button
                       key={k}
                       type="button"
@@ -238,6 +253,7 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
               <div className="relative flex items-center">
                 <input
                   id="gold-rate"
@@ -246,11 +262,25 @@ export default function App() {
                   value={goldRate}
                   onChange={handleInput(setGoldRate)}
                   className="w-full p-3 pr-14 bg-[#0a0b0f] border border-neutral-800 rounded-lg text-white placeholder-neutral-600 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all font-mono"
-                  placeholder="e.g. 14270"
+                  placeholder="e.g. 13815"
                 />
                 <span className="absolute right-3 text-xs font-mono text-neutral-500 pointer-events-none select-none">
                   ₹ / g
                 </span>
+              </div>
+
+              {/* Quick Google Search for Today's 22K Rate */}
+              <div className="mt-1.5 flex justify-end">
+                <a
+                  href="https://www.google.com/search?q=gold+price+today+22k+per+gram"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-amber-400/80 hover:text-amber-300 hover:underline transition-colors flex items-center gap-1"
+                  title="Check today's live 22k gold rate on Google"
+                >
+                  <span>🔍 Check today's 22k rate</span>
+                  <span className="text-[10px]">↗</span>
+                </a>
               </div>
             </div>
 
@@ -273,6 +303,9 @@ export default function App() {
                   grams
                 </span>
               </div>
+              <p className="text-[11px] text-neutral-500 mt-1.5">
+                Net gold weight (excluding stones)
+              </p>
             </div>
 
             {/* 3. GST (%) */}
@@ -294,9 +327,12 @@ export default function App() {
                   %
                 </span>
               </div>
+              <p className="text-[11px] text-neutral-500 mt-1.5">
+                Standard flat 3% across India
+              </p>
             </div>
 
-            {/* 4. Total Final Price Quoted (at bottom of inputs) */}
+            {/* 4. Total Final Price Quoted */}
             <div>
               <label htmlFor="total-price" className="block text-sm font-semibold text-neutral-300 mb-1.5">
                 Total Final Price Quoted
@@ -315,6 +351,9 @@ export default function App() {
                   ₹ Total
                 </span>
               </div>
+              <p className="text-[11px] text-neutral-500 mt-1.5">
+                Jeweler's final bill amount (inc. tax)
+              </p>
             </div>
           </div>
 
@@ -522,16 +561,22 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="text-center text-xs text-neutral-500 pt-2 pb-6">
-        <a
-          href="https://github.com/brittotprince/Gold-Making-Charges"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-amber-400 transition-colors underline decoration-dotted"
-        >
-          Get the source code on GitHub
-        </a>
+      {/* Footer & Privacy Note */}
+      <footer className="text-center text-xs text-neutral-500 pt-2 pb-6 space-y-1.5">
+        <div className="flex items-center justify-center gap-1 text-[11px] text-neutral-400">
+          <span>🔒</span>
+          <span>100% Client-Side Privacy: All calculations & quotes stay in your browser.</span>
+        </div>
+        <div>
+          <a
+            href="https://github.com/brittotprince/Gold-Making-Charges"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-amber-400 transition-colors underline decoration-dotted"
+          >
+            Get the source code on GitHub
+          </a>
+        </div>
       </footer>
     </div>
   )
