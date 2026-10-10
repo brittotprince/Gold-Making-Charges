@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://brittotprince.github.io/Gold-Making-Charges/sitemap.xml
